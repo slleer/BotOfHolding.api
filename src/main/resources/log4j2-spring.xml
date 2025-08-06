@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration>
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout
+                    pattern="%style{%d{MMM dd, yyyy - HH:mm:ss,SSS}}{red} : [%t] %highlight{[%-6p]}{FATAL=red BG_Yellow, ERROR=red, WARN=yellow bold, INFO=green, DEBUG=blue bold, TRACE=cyan} %style{%.45C{1}}{magenta} - %highlight{%m%n}{FATAL=red BG_Yellow, ERROR=red, WARN=yellow bold, INFO=green, DEBUG=blue bold, TRACE=cyan}"
+                    disableAnsi="false" />
+        </Console>
+        <RollingFile name="RollingFile"
+                     fileName="./logs/BotOfHoldingV2_API.log"
+                     filePattern="./logs/$${date:yyyy-MM}/BotOfHoldingV2_API-%d{-dd-MM-yyyy}-%i.log.gz">
+            <PatternLayout>
+                <pattern>%d [%p] [%t] %C{1} %m%n</pattern>
+            </PatternLayout>
+            <Policies>
+                <!-- rollover on startup, daily and when the file reaches
+                    10 MegaBytes -->
+                <OnStartupTriggeringPolicy />
+                <SizeBasedTriggeringPolicy
+                        size="10 MB" />
+                <TimeBasedTriggeringPolicy />
+            </Policies>
+        </RollingFile>
+    </Appenders>
+    <Loggers>
+        <!-- LOG everything at INFO level -->
+        <Root level="INFO">
+            <AppenderRef ref="Console" />
+            <AppenderRef ref="RollingFile" />
+        </Root>
+
+
+        <logger name="com.botofholding.api" level="DEBUG"/>
+    </Loggers>
+</Configuration>

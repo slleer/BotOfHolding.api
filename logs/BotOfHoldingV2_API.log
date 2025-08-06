@@ -1,0 +1,137 @@
+2025-08-05 22:37:06,197 [INFO] [background-preinit] Version HV000001: Hibernate Validator 8.0.2.Final
+2025-08-05 22:37:06,310 [INFO] [restartedMain] StartupInfoLogger Starting ApiApplication using Java 17.0.12 with PID 61912 (H:\Bot-O-Holding_V2\api\target\classes started by steph in H:\Bot-O-Holding_V2\api)
+2025-08-05 22:37:06,321 [DEBUG] [restartedMain] StartupInfoLogger Running with Spring Boot v3.5.0, Spring v6.2.7
+2025-08-05 22:37:06,326 [INFO] [restartedMain] SpringApplication No active profile set, falling back to 1 default profile: "default"
+2025-08-05 22:37:06,439 [INFO] [restartedMain] DeferredLog Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2025-08-05 22:37:06,458 [INFO] [restartedMain] DeferredLog For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2025-08-05 22:37:07,962 [INFO] [restartedMain] RepositoryConfigurationDelegate Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-08-05 22:37:08,071 [INFO] [restartedMain] RepositoryConfigurationDelegate Finished Spring Data repository scanning in 99 ms. Found 6 JPA repository interfaces.
+2025-08-05 22:37:09,369 [INFO] [restartedMain] TomcatWebServer Tomcat initialized with port 8990 (http)
+2025-08-05 22:37:09,385 [INFO] [restartedMain] DirectJDKLog Initializing ProtocolHandler ["http-nio-8990"]
+2025-08-05 22:37:09,387 [INFO] [restartedMain] DirectJDKLog Starting service [Tomcat]
+2025-08-05 22:37:09,388 [INFO] [restartedMain] DirectJDKLog Starting Servlet engine: [Apache Tomcat/10.1.41]
+2025-08-05 22:37:09,450 [INFO] [restartedMain] DirectJDKLog Initializing Spring embedded WebApplicationContext
+2025-08-05 22:37:09,451 [INFO] [restartedMain] ServletWebServerApplicationContext Root WebApplicationContext: initialization completed in 2992 ms
+2025-08-05 22:37:09,679 [INFO] [restartedMain] LogHelper HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-08-05 22:37:09,746 [INFO] [restartedMain] Version HHH000412: Hibernate ORM core version 6.6.15.Final
+2025-08-05 22:37:09,783 [INFO] [restartedMain] RegionFactoryInitiator HHH000026: Second-level cache disabled
+2025-08-05 22:37:10,087 [INFO] [restartedMain] SpringPersistenceUnitInfo No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-08-05 22:37:10,125 [INFO] [restartedMain] HikariDataSource HikariPool-1 - Starting...
+2025-08-05 22:37:10,435 [INFO] [restartedMain] HikariPool HikariPool-1 - Added connection ConnectionID:1 ClientConnectionId: cf7e8b5e-63e8-4a46-9083-30414755d687
+2025-08-05 22:37:10,437 [INFO] [restartedMain] HikariDataSource HikariPool-1 - Start completed.
+2025-08-05 22:37:10,581 [INFO] [restartedMain] JdbcEnvironmentInitiator HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 15.0
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2025-08-05 22:37:11,888 [INFO] [restartedMain] JtaPlatformInitiator HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-08-05 22:37:11,892 [INFO] [restartedMain] AbstractEntityManagerFactoryBean Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-08-05 22:37:12,145 [INFO] [restartedMain] QueryEnhancerFactory Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-08-05 22:37:12,843 [DEBUG] [restartedMain] GenericFilterBean Filter 'jwtAuthFilter' configured for use
+2025-08-05 22:37:14,083 [WARN] [restartedMain] JpaBaseConfiguration$JpaWebConfiguration spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-08-05 22:37:14,313 [WARN] [restartedMain] UserDetailsServiceAutoConfiguration 
+
+Using generated security password: 95f77550-2523-45ea-96dc-e0e8c5dc5c4a
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-08-05 22:37:14,322 [INFO] [restartedMain] InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2025-08-05 22:37:14,721 [INFO] [restartedMain] OptionalLiveReloadServer LiveReload server is running on port 35729
+2025-08-05 22:37:14,736 [INFO] [restartedMain] DirectJDKLog Starting ProtocolHandler ["http-nio-8990"]
+2025-08-05 22:37:14,760 [INFO] [restartedMain] TomcatWebServer Tomcat started on port 8990 (http) with context path '/'
+2025-08-05 22:37:14,769 [INFO] [restartedMain] StartupInfoLogger Started ApiApplication in 9.394 seconds (process running for 10.477)
+2025-08-05 22:37:14,944 [INFO] [restartedMain] SystemOwnerDataInitializer SystemOwner already exists
+2025-08-05 22:37:14,978 [INFO] [restartedMain] ItemDataInitializer Items already exist in database, skipping seeding.
+2025-08-05 22:37:23,381 [INFO] [http-nio-8990-exec-1] DirectJDKLog Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-08-05 22:37:23,382 [INFO] [http-nio-8990-exec-1] FrameworkServlet Initializing Servlet 'dispatcherServlet'
+2025-08-05 22:37:23,383 [INFO] [http-nio-8990-exec-1] FrameworkServlet Completed initialization in 1 ms
+2025-08-05 22:37:37,077 [DEBUG] [http-nio-8990-exec-2] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:37:37,079 [DEBUG] [http-nio-8990-exec-2] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:37:37,124 [INFO] [http-nio-8990-exec-2] UserSettingsController Attempting to find settings for current user: Hi, this is Steve
+2025-08-05 22:37:37,125 [DEBUG] [http-nio-8990-exec-2] UserSettingsServiceImpl Fetching settings for user: Hi, this is Steve
+2025-08-05 22:37:37,156 [DEBUG] [http-nio-8990-exec-3] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:37:37,156 [DEBUG] [http-nio-8990-exec-3] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:42:13,339 [DEBUG] [http-nio-8990-exec-7] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:42:13,340 [DEBUG] [http-nio-8990-exec-7] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:42:13,342 [INFO] [http-nio-8990-exec-7] UserSettingsController Attempting to find settings for current user: Hi, this is Steve
+2025-08-05 22:42:13,343 [DEBUG] [http-nio-8990-exec-7] UserSettingsServiceImpl Fetching settings for user: Hi, this is Steve
+2025-08-05 22:42:13,368 [DEBUG] [http-nio-8990-exec-8] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:42:13,368 [DEBUG] [http-nio-8990-exec-8] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:44:08,924 [DEBUG] [http-nio-8990-exec-2] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:44:08,924 [DEBUG] [http-nio-8990-exec-2] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:44:08,926 [INFO] [http-nio-8990-exec-2] UserSettingsController Attempting to find settings for current user: Hi, this is Steve
+2025-08-05 22:44:08,927 [DEBUG] [http-nio-8990-exec-2] UserSettingsServiceImpl Fetching settings for user: Hi, this is Steve
+2025-08-05 22:44:09,271 [DEBUG] [http-nio-8990-exec-3] JwtAuthFilter Processing request with explicit target owner.
+2025-08-05 22:44:09,285 [DEBUG] [http-nio-8990-exec-3] JwtAuthFilter Successfully set principal to Server with Discord ID: 1102429095524044821
+2025-08-05 22:44:09,301 [INFO] [http-nio-8990-exec-3] ContainerController Attempting to find containers for principal 'botTestingServer' and actor 'Hi, this is Steve' with filter [name=null]
+2025-08-05 22:44:18,923 [DEBUG] [http-nio-8990-exec-4] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:44:18,923 [DEBUG] [http-nio-8990-exec-4] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:44:18,924 [INFO] [http-nio-8990-exec-4] UserSettingsController Attempting to find settings for current user: Hi, this is Steve
+2025-08-05 22:44:18,924 [DEBUG] [http-nio-8990-exec-4] UserSettingsServiceImpl Fetching settings for user: Hi, this is Steve
+2025-08-05 22:44:18,936 [DEBUG] [http-nio-8990-exec-5] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:44:18,937 [DEBUG] [http-nio-8990-exec-5] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:48:33,653 [DEBUG] [http-nio-8990-exec-9] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:48:33,653 [DEBUG] [http-nio-8990-exec-9] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:48:33,654 [INFO] [http-nio-8990-exec-9] UserSettingsController Attempting to find settings for current user: Hi, this is Steve
+2025-08-05 22:48:33,655 [DEBUG] [http-nio-8990-exec-9] UserSettingsServiceImpl Fetching settings for user: Hi, this is Steve
+2025-08-05 22:48:33,670 [DEBUG] [http-nio-8990-exec-10] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:48:33,670 [DEBUG] [http-nio-8990-exec-10] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:49:41,066 [DEBUG] [http-nio-8990-exec-4] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:49:41,067 [DEBUG] [http-nio-8990-exec-4] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:49:41,068 [INFO] [http-nio-8990-exec-4] UserSettingsController Attempting to find settings for current user: Hi, this is Steve
+2025-08-05 22:49:41,069 [DEBUG] [http-nio-8990-exec-4] UserSettingsServiceImpl Fetching settings for user: Hi, this is Steve
+2025-08-05 22:49:41,095 [DEBUG] [http-nio-8990-exec-5] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:49:41,095 [DEBUG] [http-nio-8990-exec-5] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:50:37,124 [DEBUG] [http-nio-8990-exec-9] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:50:37,124 [DEBUG] [http-nio-8990-exec-9] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:50:37,125 [INFO] [http-nio-8990-exec-9] UserSettingsController Attempting to find settings for current user: Hi, this is Steve
+2025-08-05 22:50:37,125 [DEBUG] [http-nio-8990-exec-9] UserSettingsServiceImpl Fetching settings for user: Hi, this is Steve
+2025-08-05 22:50:37,141 [DEBUG] [http-nio-8990-exec-10] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:50:37,142 [DEBUG] [http-nio-8990-exec-10] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:54:39,791 [DEBUG] [http-nio-8990-exec-6] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:54:39,791 [DEBUG] [http-nio-8990-exec-6] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:54:39,792 [INFO] [http-nio-8990-exec-6] UserSettingsController Attempting to find settings for current user: Hi, this is Steve
+2025-08-05 22:54:39,793 [DEBUG] [http-nio-8990-exec-6] UserSettingsServiceImpl Fetching settings for user: Hi, this is Steve
+2025-08-05 22:54:39,813 [DEBUG] [http-nio-8990-exec-7] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:54:39,814 [DEBUG] [http-nio-8990-exec-7] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:55:12,052 [DEBUG] [http-nio-8990-exec-8] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:55:12,052 [DEBUG] [http-nio-8990-exec-8] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:55:12,053 [INFO] [http-nio-8990-exec-8] UserSettingsController Attempting to find settings for current user: Hi, this is Steve
+2025-08-05 22:55:12,054 [DEBUG] [http-nio-8990-exec-8] UserSettingsServiceImpl Fetching settings for user: Hi, this is Steve
+2025-08-05 22:55:12,334 [DEBUG] [http-nio-8990-exec-9] JwtAuthFilter Processing request with explicit target owner.
+2025-08-05 22:55:12,337 [DEBUG] [http-nio-8990-exec-9] JwtAuthFilter Successfully set principal to Server with Discord ID: 1102429095524044821
+2025-08-05 22:55:12,339 [INFO] [http-nio-8990-exec-9] ContainerController Attempting to find containers for principal 'botTestingServer' and actor 'Hi, this is Steve' with filter [name=null]
+2025-08-05 22:56:35,154 [DEBUG] [http-nio-8990-exec-3] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:56:35,154 [DEBUG] [http-nio-8990-exec-3] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:56:35,155 [INFO] [http-nio-8990-exec-3] UserSettingsController Attempting to find settings for current user: Hi, this is Steve
+2025-08-05 22:56:35,157 [DEBUG] [http-nio-8990-exec-3] UserSettingsServiceImpl Fetching settings for user: Hi, this is Steve
+2025-08-05 22:56:35,371 [DEBUG] [http-nio-8990-exec-4] JwtAuthFilter Processing request with explicit target owner.
+2025-08-05 22:56:35,375 [DEBUG] [http-nio-8990-exec-4] JwtAuthFilter Successfully set principal to Server with Discord ID: 1102429095524044821
+2025-08-05 22:56:35,376 [INFO] [http-nio-8990-exec-4] ContainerController Attempting to find containers for principal 'botTestingServer' and actor 'Hi, this is Steve' with filter [name=null]
+2025-08-05 22:57:00,466 [DEBUG] [http-nio-8990-exec-5] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:57:00,467 [DEBUG] [http-nio-8990-exec-5] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:57:00,468 [INFO] [http-nio-8990-exec-5] UserSettingsController Attempting to find settings for current user: Hi, this is Steve
+2025-08-05 22:57:00,470 [DEBUG] [http-nio-8990-exec-5] UserSettingsServiceImpl Fetching settings for user: Hi, this is Steve
+2025-08-05 22:57:00,484 [DEBUG] [http-nio-8990-exec-6] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:57:00,485 [DEBUG] [http-nio-8990-exec-6] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:58:40,348 [DEBUG] [http-nio-8990-exec-2] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:58:40,348 [DEBUG] [http-nio-8990-exec-2] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:58:40,349 [INFO] [http-nio-8990-exec-2] UserSettingsController Attempting to find settings for current user: Hi, this is Steve
+2025-08-05 22:58:40,350 [DEBUG] [http-nio-8990-exec-2] UserSettingsServiceImpl Fetching settings for user: Hi, this is Steve
+2025-08-05 22:58:40,368 [DEBUG] [http-nio-8990-exec-10] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:58:40,368 [DEBUG] [http-nio-8990-exec-10] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:58:44,614 [DEBUG] [http-nio-8990-exec-1] JwtAuthFilter Processing request with implicit target owner (actor is principal).
+2025-08-05 22:58:44,614 [DEBUG] [http-nio-8990-exec-1] JwtAuthFilter Successfully set principal to USER with Discord ID: 559455287770218498
+2025-08-05 22:58:44,616 [INFO] [http-nio-8990-exec-1] UserSettingsController Attempting to find settings for current user: Hi, this is Steve
+2025-08-05 22:58:44,617 [DEBUG] [http-nio-8990-exec-1] UserSettingsServiceImpl Fetching settings for user: Hi, this is Steve
+2025-08-05 22:58:44,857 [DEBUG] [http-nio-8990-exec-3] JwtAuthFilter Processing request with explicit target owner.
+2025-08-05 22:58:44,862 [DEBUG] [http-nio-8990-exec-3] JwtAuthFilter Successfully set principal to Server with Discord ID: 1102429095524044821
+2025-08-05 22:58:44,864 [INFO] [http-nio-8990-exec-3] ContainerController Attempting to find containers for principal 'botTestingServer' and actor 'Hi, this is Steve' with filter [name=null]
+2025-08-05 23:01:41,471 [INFO] [SpringApplicationShutdownHook] GracefulShutdown Commencing graceful shutdown. Waiting for active requests to complete
+2025-08-05 23:01:41,862 [INFO] [tomcat-shutdown] GracefulShutdown Graceful shutdown complete
+2025-08-05 23:01:41,868 [INFO] [SpringApplicationShutdownHook] AbstractEntityManagerFactoryBean Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-08-05 23:01:41,872 [INFO] [SpringApplicationShutdownHook] HikariDataSource HikariPool-1 - Shutdown initiated...
+2025-08-05 23:01:41,878 [INFO] [SpringApplicationShutdownHook] HikariDataSource HikariPool-1 - Shutdown completed.
