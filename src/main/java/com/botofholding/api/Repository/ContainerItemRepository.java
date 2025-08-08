@@ -39,4 +39,17 @@ public interface ContainerItemRepository extends JpaRepository<ContainerItem, Lo
             "AND i.parent = true " +
             "ORDER BY ci.lastModifiedDateTime DESC")
     List<ContainerItem> findAllParentsFromActiveContainer(@Param("prefix") String prefix, @Param("user") BohUser user, Pageable pageable);
+
+
+    @Query("SELECT ci FROM ContainerItem ci JOIN ci.container c JOIN c.owner o " +
+            "WHERE c = :#{#user.primaryContainer} " +
+            "AND LOWER(ci.item.itemName) LIKE LOWER(CONCAT('%', :prefix, '%'))")
+    List<ContainerItem> findInActiveContainerByPrefix(@Param("prefix") String prefix, @Param("user") BohUser user, Pageable pageable);
+
+    @Query("SELECT ci FROM ContainerItem ci JOIN ci.container c JOIN c.owner o " +
+            "WHERE c = :#{#user.primaryContainer} " +
+            "AND ci.item.parent = true " +
+            "AND LOWER(ci.item.itemName) LIKE LOWER(CONCAT('%', :prefix, '%'))")
+    List<ContainerItem> findParentsInActiveContainerByPrefix(@Param("prefix") String prefix, @Param("user") BohUser user, Pageable pageable);
+
 }

@@ -4,6 +4,7 @@ import com.botofholding.api.Domain.DTO.Request.AddItemRequestDto;
 import com.botofholding.api.Domain.DTO.Request.ContainerRequestDto;
 import com.botofholding.api.Domain.DTO.Request.ModifyItemRequestDto;
 import com.botofholding.api.Domain.DTO.Response.AutoCompleteDto;
+import com.botofholding.api.Domain.DTO.Response.ServiceResponse;
 import com.botofholding.api.Domain.DTO.Response.ContainerSummaryDto;
 import com.botofholding.api.Domain.DTO.Response.DeletedEntityDto;
 import com.botofholding.api.Domain.Entity.*;
@@ -38,17 +39,19 @@ public class ContainerServiceImpl implements ContainerService {
     private final BohUserRepository bohUserRepository;
     private final ItemRepository itemRepository;
     private final ContainerItemMapper containerItemMapper;
+    private final ContainerItemRepository containerItemRepository;
 
     @Autowired
     public ContainerServiceImpl(ContainerRepository containerRepository, ContainerMapper containerMapper,
                                 OwnerRepository ownerRepository, BohUserRepository bohUserRepository,
-                                ItemRepository itemRepository, ContainerItemMapper containerItemMapper) {
+                                ItemRepository itemRepository, ContainerItemMapper containerItemMapper, ContainerItemRepository containerItemRepository) {
         this.containerRepository = containerRepository;
         this.containerMapper = containerMapper;
         this.ownerRepository = ownerRepository;
         this.bohUserRepository = bohUserRepository;
         this.itemRepository = itemRepository;
         this.containerItemMapper = containerItemMapper;
+        this.containerItemRepository = containerItemRepository;
     }
 
     /**
@@ -232,7 +235,7 @@ public class ContainerServiceImpl implements ContainerService {
      */
     @Override
     @Transactional
-    public ContainerSummaryDto addItemToActiveContainer(AddItemRequestDto addDto, Owner actor, Owner principal) {
+    public ServiceResponse<ContainerSummaryDto> addItemToActiveContainer(AddItemRequestDto addDto, Owner actor, Owner principal) {
         if (!(actor instanceof BohUser user)) {
             throw new UnsupportedOperationException("Only users can have an active container to add items to.");
         }
@@ -286,36 +289,38 @@ public class ContainerServiceImpl implements ContainerService {
         }
         ContainerItem parent = parentOpt.orElse(null);
 
+        String message;
+
         // Correctly handle stackable vs. non-stackable (parent) items.
         if (!itemToAdd.isParent()) {
-
-            ContainerItem containerItem = activeContainer.getContainerItems().stream()
+            Optional<ContainerItem> existingStackOpt = activeContainer.getContainerItems().stream()
                     .filter(ci -> ci.getItem().getItemId().equals(itemToAdd.getItemId()) && Objects.equals(ci.getParent(), parent))
-                    .findFirst()
-                    .orElseGet(() -> {
-                        // No existing stack found in the target location, so create a new one.
-                        ContainerItem newItem = new ContainerItem();
-                        newItem.setItem(itemToAdd);
-                        newItem.setContainer(activeContainer);
-                        newItem.setQuantity(0); // Start at 0 before adding
-                        if (parent != null) {
-                            parent.addChild(newItem);
-                        }
-                        activeContainer.getContainerItems().add(newItem); // Add to the container's main list
-                        String location = (parent != null) ? containerItemMapper.mapItemName(parent) : activeContainer.getContainerName();
-                        logger.info("Creating new stack of '{}' inside '{}'", itemToAdd.getItemName(), location);
-                        return newItem;
-                    });
+                    .findFirst();
 
-            // Now, update the found or newly created containerItem
-            containerItem.setQuantity(containerItem.getQuantity() + addDto.getQuantity());
+            ContainerItem containerItem;
+            if (existingStackOpt.isPresent()) {
+                containerItem = existingStackOpt.get();
+                containerItem.setQuantity(containerItem.getQuantity() + addDto.getQuantity());
+                message = String.format("Increased '%s' by %d.", itemToAdd.getItemName(), addDto.getQuantity());
+            } else {
+                containerItem = new ContainerItem();
+                containerItem.setItem(itemToAdd);
+                containerItem.setContainer(activeContainer);
+                containerItem.setQuantity(addDto.getQuantity()); // Set initial quantity directly
+                if (parent != null) {
+                    parent.addChild(containerItem);
+                }
+                activeContainer.getContainerItems().add(containerItem);
+                String location = (parent != null) ? containerItemMapper.mapItemName(parent) : activeContainer.getContainerName();
+                message = String.format("Added %dx '%s' inside '%s'.", addDto.getQuantity(), itemToAdd.getItemName(), location);
+            }
             if (addDto.getUserNote() != null && !addDto.getUserNote().isBlank()) {
                 containerItem.setUserNote(addDto.getUserNote());
             }
-            logger.info("Updated item '{}' in container '{}'. New quantity: {}", itemToAdd.getItemName(), activeContainer.getContainerName(), containerItem.getQuantity());
         } else {
             // Item is a parent (not stackable). Create a new instance for each quantity.
-            logger.info("Adding {} new instance(s) of non-stackable item '{}' to container '{}'", addDto.getQuantity(), itemToAdd.getItemName(), activeContainer.getContainerName());
+            message = String.format("Added %dx '%s'.", addDto.getQuantity(), itemToAdd.getItemName());
+            logger.info(message);
             for (int i = 0; i < addDto.getQuantity(); i++) {
                 ContainerItem newContainerItem = new ContainerItem();
                 newContainerItem.setItem(itemToAdd);
@@ -336,7 +341,8 @@ public class ContainerServiceImpl implements ContainerService {
         // resulting in a null value in the response DTO.
         Container savedContainer = containerRepository.saveAndFlush(activeContainer);
 
-        return containerMapper.toSummaryDto(savedContainer, user);
+        ContainerSummaryDto summaryDto = containerMapper.toSummaryDto(savedContainer, user);
+        return new ServiceResponse<>(summaryDto, message);
     }
 
     /**
@@ -350,7 +356,7 @@ public class ContainerServiceImpl implements ContainerService {
      */
     @Override
     @Transactional
-    public ContainerSummaryDto dropItemFromActiveContainer(Long id, String name, Integer quantity, Boolean dropChildren, Owner actor) {
+    public ServiceResponse<ContainerSummaryDto> dropItemFromActiveContainer(Long id, String name, Integer quantity, Boolean dropChildren, Owner actor) {
         if (!(actor instanceof BohUser user)) {
             throw new UnsupportedOperationException("Only users can have an active container to add items to.");
         }
@@ -366,11 +372,11 @@ public class ContainerServiceImpl implements ContainerService {
         if (foundContainerItem.getQuantity() < quantity) {
             throw new ValidationException("The container only has " + foundContainerItem.getQuantity() + " of item '" + foundContainerItem.getItem().getItemName() + "', can't remove " + quantity +  ".");
         }
-        
+
+
         if (foundContainerItem.getQuantity().equals(quantity)) {
             // If the quantity matches exactly, remove the item from the container.
             if(foundContainerItem.getItem().isParent()) {
-
                 List<ContainerItem> childrenItems = new ArrayList<>(foundContainerItem.getChildren());
                 if (Boolean.TRUE.equals(dropChildren)) {
                     activeContainer.getContainerItems().removeAll(childrenItems);
@@ -383,93 +389,16 @@ public class ContainerServiceImpl implements ContainerService {
             logger.info("Removed all of item '{}' from container '{}'", foundContainerItem.getItem().getItemName(), activeContainer.getContainerName());
         } else {
            foundContainerItem.setQuantity(foundContainerItem.getQuantity() - quantity);
-            logger.info("Decreased quantity of item '{}' by {} in container '{}'. New quantity: {}",
+           logger.info("Decreased quantity of item '{}' by {} in container '{}'. New quantity: {}",
                     foundContainerItem.getItem().getItemName(), quantity, activeContainer.getContainerName(), foundContainerItem.getQuantity());
         }
         // We must explicitly save and flush the container here to ensure the Auditable framework is triggered
         // and that any deletions (from orphanRemoval) are executed.
+
+        String message = "Removed " + quantity + "x '" + foundContainerItem.getItem().getItemName() + "'" + (dropChildren ? " and any children." : ".");
         Container savedContainer = containerRepository.saveAndFlush(activeContainer);
-
-        return containerMapper.toSummaryDto(savedContainer, user);
-    }
-
-    /**
-     * generates autocomplete result set for given prefix of ContainerItems inside user's active container
-     * @param prefix The search string to filter by
-     * @param actor The requesting user for whom the container is active for.
-     * @return A list of DTOs of the found containerItems.
-     */
-    @Override
-    @Transactional
-    public List<AutoCompleteDto> autocompleteContainerItemsInActiveContainer(String prefix, Owner actor) {
-        if (!(actor instanceof BohUser user)) {
-            throw new UnsupportedOperationException("Only users can have an active container.");
-        }
-        logger.info("Searching for items with prefix '{}' for actor: {}", prefix, actor.getDisplayName());
-//        Pageable top25 = PageRequest.of(0, 25);
-//
-//        return searchAndMapItems(
-//                () -> containerItemRepository.findAllFromActiveContainerForUser(prefix, user, top25),
-//                prefix,
-//                containerItemMapper::toAutoCompleteDto);
-        Container activeContainer = containerRepository.findActiveContainerWithItemsForUser(user)
-                .orElseThrow(() -> new ContainerNotFoundException("No active container found for user " + user.getDisplayName()));
-
-        List<AutoCompleteDto> results = activeContainer.getContainerItems().stream()
-                .filter(ci -> {
-                    // Use the fully-qualified mapped name for filtering to match what the user sees.
-                    String fullName = containerItemMapper.mapItemName(ci);
-                    // Case-insensitive "contains" search is more user-friendly than "startsWith".
-                    return fullName.toLowerCase().contains(prefix.toLowerCase());
-                })
-                .sorted(Comparator.comparing(containerItemMapper::mapItemName)) // Sort alphabetically by full name
-                .limit(25) // Apply pagination
-                .map(containerItemMapper::toAutoCompleteDto)
-                .collect(Collectors.toList());
-
-        if (results.isEmpty()) {
-            logger.info("No items found for autocomplete with prefix '{}'.", prefix);
-        }
-        return results;
-    }
-
-    /**
-     * generates autocomplete result set for given prefix of 'Parent' ContainerItems inside user's active container
-     * @param prefix The search string to filter by
-     * @param actor The requesting user for whom the container is active for.
-     * @return A list of DTOs of the found containerItems.
-     */
-    @Override
-    @Transactional
-    public List<AutoCompleteDto> autocompleteParentContainerItemsInActiveContainer(String prefix, Owner actor) {
-        if (!(actor instanceof BohUser user)) {
-            throw new UnsupportedOperationException("Only users can have an active container.");
-        }
-        logger.info("Searching for parent items with prefix '{}' for actor: {}", prefix, actor.getDisplayName());
-//        Pageable top25 = PageRequest.of(0, 25);
-//
-//        return searchAndMapItems(
-//                () -> containerItemRepository.findAllParentsFromActiveContainer(prefix, user, top25),
-//                prefix,
-//                containerItemMapper::toAutoCompleteDto);
-        Container activeContainer = containerRepository.findActiveContainerWithItemsForUser(user)
-                .orElseThrow(() -> new ContainerNotFoundException("No active container found for user " + user.getDisplayName()));
-
-        List<AutoCompleteDto> results = activeContainer.getContainerItems().stream()
-                .filter(ci -> ci.getItem() != null && ci.getItem().isParent()) // Filter for parents first
-                .filter(ci -> {
-                    String fullName = containerItemMapper.mapItemName(ci);
-                    return fullName.toLowerCase().contains(prefix.toLowerCase());
-                })
-                .sorted(Comparator.comparing(containerItemMapper::mapItemName))
-                .limit(25)
-                .map(containerItemMapper::toAutoCompleteDto)
-                .collect(Collectors.toList());
-
-        if (results.isEmpty()) {
-            logger.info("No parent items found for autocomplete with prefix '{}'.", prefix);
-        }
-        return results;
+        ContainerSummaryDto summaryDto = containerMapper.toSummaryDto(savedContainer, user);
+        return new ServiceResponse<>(summaryDto, message);
     }
 
     // TODO - update so guild owned container items can be deleted
@@ -527,7 +456,7 @@ public class ContainerServiceImpl implements ContainerService {
      */
     @Override
     @Transactional
-    public ContainerSummaryDto modifyItemInActiveContainer(ModifyItemRequestDto modifyDto, Owner actor) {
+    public ServiceResponse<ContainerSummaryDto> modifyItemInActiveContainer(ModifyItemRequestDto modifyDto, Owner actor) {
         if (!(actor instanceof BohUser user)) {
             throw new UnsupportedOperationException("Only users can modify items in an active container.");
         }
@@ -546,10 +475,13 @@ public class ContainerServiceImpl implements ContainerService {
         ContainerItem itemToModify = findContainerItem(modifyDto.getContainerItemId(), modifyDto.getContainerItemName(), activeContainer);
 
         boolean modified = false;
+        StringBuilder sb = new StringBuilder();
+        sb.append("Modified field(s) [");
 
         // 4. Update the note if the 'note' field is present in the request body
         if (modifyDto.getNote() != null) {
             // Allow clearing the note by passing an empty or blank string
+            sb.append("note");
             itemToModify.setUserNote(modifyDto.getNote().isBlank() ? null : modifyDto.getNote());
             logger.info("Updated note for item '{}' (ID: {})", containerItemMapper.mapItemName(itemToModify), itemToModify.getContainerItemId());
             modified = true;
@@ -568,6 +500,7 @@ public class ContainerServiceImpl implements ContainerService {
             }
             newParent.addChild(itemToModify);
             logger.info("Moved item '{}' into parent '{}'", containerItemMapper.mapItemName(itemToModify), containerItemMapper.mapItemName(newParent));
+            sb.append(modified ? ", location" : "location");
             modified = true;
 
         } else if (Boolean.TRUE.equals(modifyDto.getMoveToRoot())) {
@@ -575,6 +508,8 @@ public class ContainerServiceImpl implements ContainerService {
                 // Move to root by severing the link with the current parent
                 itemToModify.getParent().removeChild(itemToModify);
                 logger.info("Moved item '{}' to the container root.", containerItemMapper.mapItemName(itemToModify));
+
+                sb.append(modified ? ", location" : "location");
                 modified = true;
             } else {
                 logger.info("Item '{}' is already at the root. No move performed.", containerItemMapper.mapItemName(itemToModify));
@@ -589,18 +524,73 @@ public class ContainerServiceImpl implements ContainerService {
             }
             logger.info("Updated quantity of item '{}' to {}.", containerItemMapper.mapItemName(itemToModify), modifyDto.getNewQuantity());
             itemToModify.setQuantity(modifyDto.getNewQuantity());
+            sb.append(modified ? ", quantity" : "quantity");
             modified = true;
         }
-
+        sb.append("] for item: ").append(itemToModify.getItem().getItemName()).append(".");
         if (!modified) {
             logger.warn("Modify item request received for item ID {}, but no changes were specified in the request body.", itemToModify.getContainerItemId());
             // No need to save if no changes were made, just return the current state
-            return containerMapper.toSummaryDto(activeContainer, user);
+            ContainerSummaryDto summaryDto = containerMapper.toSummaryDto(activeContainer, user);
+            return new ServiceResponse<>(summaryDto, "No changes were made to the item.");
         }
 
         // 6. Save the container to persist all changes and return the updated state
         Container savedContainer = containerRepository.saveAndFlush(activeContainer);
-        return containerMapper.toSummaryDto(savedContainer, user);
+        ContainerSummaryDto summaryDto = containerMapper.toSummaryDto(activeContainer, user);
+        return new ServiceResponse<>(summaryDto, sb.toString());
+    }
+
+    /**
+     * generates autocomplete result set for given prefix of ContainerItems inside user's active container
+     * @param prefix The search string to filter by
+     * @param actor The requesting user for whom the container is active for.
+     * @return A list of DTOs of the found containerItems.
+     */
+    @Override
+    @Transactional
+    public List<AutoCompleteDto> autocompleteContainerItemsInActiveContainer(String prefix, Owner actor) {
+        if (!(actor instanceof BohUser user)) {
+            throw new UnsupportedOperationException("Only users can have an active container.");
+        }
+        logger.info("Searching for items with prefix '{}' for actor: {}", prefix, actor.getDisplayName());
+        Pageable top25 = PageRequest.of(0, 25, Sort.by("item.itemName"));
+
+        // Delegate filtering and pagination to the database for efficiency.
+        List<ContainerItem> items = containerItemRepository.findInActiveContainerByPrefix(prefix, user, top25);
+
+        if (items.isEmpty()) {
+            logger.info("No items found for autocomplete with prefix '{}'.", prefix);
+        }
+        return items.stream()
+                .map(containerItemMapper::toAutoCompleteDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * generates autocomplete result set for given prefix of 'Parent' ContainerItems inside user's active container
+     * @param prefix The search string to filter by
+     * @param actor The requesting user for whom the container is active for.
+     * @return A list of DTOs of the found containerItems.
+     */
+    @Override
+    @Transactional
+    public List<AutoCompleteDto> autocompleteParentContainerItemsInActiveContainer(String prefix, Owner actor) {
+        if (!(actor instanceof BohUser user)) {
+            throw new UnsupportedOperationException("Only users can have an active container.");
+        }
+        logger.info("Searching for parent items with prefix '{}' for actor: {}", prefix, actor.getDisplayName());
+        Pageable top25 = PageRequest.of(0, 25, Sort.by("item.itemName"));
+
+        // Delegate filtering and pagination to the database for efficiency.
+        List<ContainerItem> items = containerItemRepository.findParentsInActiveContainerByPrefix(prefix, user, top25);
+
+        if (items.isEmpty()) {
+            logger.info("No parent items found for autocomplete with prefix '{}'.", prefix);
+        }
+        return items.stream()
+                .map(containerItemMapper::toAutoCompleteDto)
+                .collect(Collectors.toList());
     }
 
     /**

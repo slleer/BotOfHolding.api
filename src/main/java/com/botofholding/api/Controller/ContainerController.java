@@ -6,6 +6,7 @@ import com.botofholding.api.Domain.DTO.Request.ModifyItemRequestDto;
 import com.botofholding.api.Domain.DTO.Response.AutoCompleteDto;
 import com.botofholding.api.Domain.DTO.Response.ContainerSummaryDto;
 import com.botofholding.api.Domain.DTO.Response.DeletedEntityDto;
+import com.botofholding.api.Domain.DTO.Response.ServiceResponse;
 import com.botofholding.api.Domain.DTO.Response.StandardApiResponse;
 import com.botofholding.api.Domain.Entity.Owner;
 import com.botofholding.api.Service.Interfaces.ContainerService;
@@ -144,6 +145,76 @@ public class ContainerController extends BaseController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/active/items")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<StandardApiResponse<ContainerSummaryDto>> addItemToActiveContainer(
+            @Valid @RequestBody AddItemRequestDto addItemRequestDto) {
+        Owner actor = getRequestActor();
+        Owner principal = getAuthenticatedPrincipal();
+        String itemIdentifier = (addItemRequestDto.getItemName() != null) ? "named '" + addItemRequestDto.getItemName()
+                + "'" : "with ID " + addItemRequestDto.getItemId();
+        logger.info("Attempting to add item {} (quantity: {}) to active container for user '{}'",
+                itemIdentifier,
+                addItemRequestDto.getQuantity(),
+                actor.getDisplayName());
+
+        ServiceResponse<ContainerSummaryDto> serviceResponse = containerService.addItemToActiveContainer(addItemRequestDto, actor, principal);
+
+        StandardApiResponse<ContainerSummaryDto> response = new StandardApiResponse<>(true, serviceResponse.message(), serviceResponse.data());
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/active/items")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<StandardApiResponse<ContainerSummaryDto>> dropItemFromActiveContainer(
+            @RequestParam(required = false) Long id,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Boolean dropChildren,
+            @RequestParam(required = true) Integer quantity) {
+        Owner actor = getRequestActor();
+        // [FIX] Log a clear identifier, as 'name' can be null if 'id' is used.
+        String itemIdentifier = (name != null) ? "named '" + name + "'" : "with ID " + id;
+        logger.info("Attempting to drop item {} (quantity: {}) from active container.", itemIdentifier, quantity);
+
+        ServiceResponse<ContainerSummaryDto> serviceResponse  = containerService.dropItemFromActiveContainer(id, name, quantity, dropChildren, actor);
+
+        StandardApiResponse<ContainerSummaryDto> response = new StandardApiResponse<>(true, serviceResponse.message(), serviceResponse.data());
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/active/items")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<StandardApiResponse<ContainerSummaryDto>> modifyItemInActiveContainer(
+            @Valid @RequestBody ModifyItemRequestDto modifyDto) {
+        Owner actor = getRequestActor();
+        String itemIdentifier = (modifyDto.getContainerItemName() != null)
+                ? "named '" + modifyDto.getContainerItemName() + "'"
+                : "with ID " + modifyDto.getContainerItemId();
+        logger.info("Attempting to modify item {} in active container for user '{}'", itemIdentifier, actor.getDisplayName());
+
+        ServiceResponse<ContainerSummaryDto> serviceResponse  = containerService.modifyItemInActiveContainer(modifyDto, actor);
+
+        StandardApiResponse<ContainerSummaryDto> response = new StandardApiResponse<>(true, serviceResponse.message(), serviceResponse.data());
+        return ResponseEntity.ok(response);
+    }
+
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("@securityService.canModifyContainer(#id, principal)")
+    public ResponseEntity<StandardApiResponse<DeletedEntityDto>> deleteContainerById(
+            @PathVariable("id") @NotNull @Min(1) Long id,
+            @RequestParam("name") String name) {
+        Owner actor = getRequestActor();
+
+        logger.info("User '{}' attempting to delete container with ID: {} and confirmation name: '{}'",
+                actor.getDisplayName(), id, name);
+
+        DeletedEntityDto deletedEntity = containerService.deleteContainerByIdAndName(id, name, actor);
+        String message = responseBuilder.buildSuccessDeleteMessage(deletedEntity.getEntityType(), deletedEntity.getName());
+        StandardApiResponse<DeletedEntityDto> response = new StandardApiResponse<>(true, message, deletedEntity);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/active/items/autocomplete")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<StandardApiResponse<List<AutoCompleteDto>>> autocompleteItemsInActiveContainer(@RequestParam String prefix) {
@@ -169,86 +240,6 @@ public class ContainerController extends BaseController {
 
         String message = responseBuilder.buildSuccessFoundMessage("Parent Items in active container", prefix);
         StandardApiResponse<List<AutoCompleteDto>> response = new StandardApiResponse<>(true, message, dtoList);
-        return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/active/items")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<StandardApiResponse<ContainerSummaryDto>> addItemToActiveContainer(
-            @Valid @RequestBody AddItemRequestDto addItemRequestDto) {
-        Owner actor = getRequestActor();
-        Owner principal = getAuthenticatedPrincipal();
-        String itemIdentifier = (addItemRequestDto.getItemName() != null) ? "named '" + addItemRequestDto.getItemName()
-                + "'" : "with ID " + addItemRequestDto.getItemId();
-        logger.info("Attempting to add item {} (quantity: {}) to active container for user '{}'",
-                itemIdentifier,
-                addItemRequestDto.getQuantity(),
-                actor.getDisplayName());
-
-        ContainerSummaryDto updatedContainer = containerService.addItemToActiveContainer(addItemRequestDto, actor, principal);
-
-        String message = responseBuilder.buildSuccessItemAddedMessage(
-                updatedContainer.getContainerName(),
-                itemIdentifier
-        );
-        StandardApiResponse<ContainerSummaryDto> response = new StandardApiResponse<>(true, message, updatedContainer);
-        return ResponseEntity.ok(response);
-    }
-    
-    @DeleteMapping("/active/items")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<StandardApiResponse<ContainerSummaryDto>> dropItemFromActiveContainer(
-            @RequestParam(required = false) Long id,
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) Boolean dropChildren,
-            @RequestParam(required = true) Integer quantity) {
-        Owner actor = getRequestActor();
-        // [FIX] Log a clear identifier, as 'name' can be null if 'id' is used.
-        String itemIdentifier = (name != null) ? "named '" + name + "'" : "with ID " + id;
-        logger.info("Attempting to drop item {} (quantity: {}) from active container.", itemIdentifier, quantity);
-
-        ContainerSummaryDto updatedContainer = containerService.dropItemFromActiveContainer(id, name, quantity, dropChildren, actor);
-
-        String message = responseBuilder.buildSuccessItemDroppedMessage(
-                updatedContainer.getContainerName(),
-                itemIdentifier
-        );
-        StandardApiResponse<ContainerSummaryDto> response = new StandardApiResponse<>(true, message, updatedContainer);
-        return ResponseEntity.ok(response);
-    }
-
-    @PatchMapping("/active/items")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<StandardApiResponse<ContainerSummaryDto>> modifyItemInActiveContainer(
-            @Valid @RequestBody ModifyItemRequestDto modifyDto) {
-        Owner actor = getRequestActor();
-        String itemIdentifier = (modifyDto.getContainerItemName() != null)
-                ? "named '" + modifyDto.getContainerItemName() + "'"
-                : "with ID " + modifyDto.getContainerItemId();
-        logger.info("Attempting to modify item {} in active container for user '{}'", itemIdentifier, actor.getDisplayName());
-
-        ContainerSummaryDto updatedContainer = containerService.modifyItemInActiveContainer(modifyDto, actor);
-
-        // Using a generic success message is appropriate here as the details are in the response body.
-        String message = responseBuilder.buildSuccessContainerItemModificationMessage(modifyDto.getContainerItemName(), updatedContainer.getContainerName());
-        StandardApiResponse<ContainerSummaryDto> response = new StandardApiResponse<>(true, message, updatedContainer);
-        return ResponseEntity.ok(response);
-    }
-
-
-    @DeleteMapping("/{id}")
-    @PreAuthorize("@securityService.canModifyContainer(#id, principal)")
-    public ResponseEntity<StandardApiResponse<DeletedEntityDto>> deleteContainerById(
-            @PathVariable("id") @NotNull @Min(1) Long id,
-            @RequestParam("name") String name) {
-        Owner actor = getRequestActor();
-
-        logger.info("User '{}' attempting to delete container with ID: {} and confirmation name: '{}'",
-                actor.getDisplayName(), id, name);
-
-        DeletedEntityDto deletedEntity = containerService.deleteContainerByIdAndName(id, name, actor);
-        String message = responseBuilder.buildSuccessDeleteMessage(deletedEntity.getEntityType(), deletedEntity.getName());
-        StandardApiResponse<DeletedEntityDto> response = new StandardApiResponse<>(true, message, deletedEntity);
         return ResponseEntity.ok(response);
     }
 

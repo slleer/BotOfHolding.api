@@ -5,6 +5,7 @@ import com.botofholding.api.Domain.DTO.Request.ContainerRequestDto;
 import com.botofholding.api.Domain.DTO.Request.ModifyItemRequestDto;
 import com.botofholding.api.Domain.DTO.Response.AutoCompleteDto;
 import com.botofholding.api.Domain.DTO.Response.ContainerSummaryDto;
+import com.botofholding.api.Domain.DTO.Response.ServiceResponse;
 import com.botofholding.api.Domain.DTO.Response.DeletedEntityDto;
 import com.botofholding.api.Domain.Entity.Owner;
 import jakarta.validation.constraints.Min;
@@ -28,9 +29,9 @@ public interface ContainerService {
 
     ContainerSummaryDto findActiveContainerForUser(Owner actor);
 
-    ContainerSummaryDto addItemToActiveContainer(AddItemRequestDto addDto, Owner actor, Owner principal);
+    ServiceResponse<ContainerSummaryDto> addItemToActiveContainer(AddItemRequestDto addDto, Owner actor, Owner principal);
 
-    ContainerSummaryDto dropItemFromActiveContainer(Long id, String name, Integer quantity, Boolean dropChildren, Owner actor);
+    ServiceResponse<ContainerSummaryDto> dropItemFromActiveContainer(Long id, String name, Integer quantity, Boolean dropChildren, Owner actor);
 
     List<AutoCompleteDto> autocompleteContainerItemsInActiveContainer(String prefix, Owner actor);
 
@@ -38,5 +39,5 @@ public interface ContainerService {
 
     DeletedEntityDto deleteContainerByIdAndName(@NotNull @Min(1) Long id, @NotNull String name, Owner actor);
 
-    ContainerSummaryDto modifyItemInActiveContainer(ModifyItemRequestDto modifyItemRequestDto, Owner actor);
+    ServiceResponse<ContainerSummaryDto> modifyItemInActiveContainer(ModifyItemRequestDto modifyItemRequestDto, Owner actor);
 }
