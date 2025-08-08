@@ -2,6 +2,7 @@ package com.botofholding.api.Controller;
 
 import com.botofholding.api.Domain.DTO.Request.AddItemRequestDto;
 import com.botofholding.api.Domain.DTO.Request.ContainerRequestDto;
+import com.botofholding.api.Domain.DTO.Request.ModifyItemRequestDto;
 import com.botofholding.api.Domain.DTO.Response.AutoCompleteDto;
 import com.botofholding.api.Domain.DTO.Response.ContainerSummaryDto;
 import com.botofholding.api.Domain.DTO.Response.DeletedEntityDto;
@@ -216,7 +217,25 @@ public class ContainerController extends BaseController {
         return ResponseEntity.ok(response);
     }
 
-    
+    @PatchMapping("/active/items")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<StandardApiResponse<ContainerSummaryDto>> modifyItemInActiveContainer(
+            @Valid @RequestBody ModifyItemRequestDto modifyDto) {
+        Owner actor = getRequestActor();
+        String itemIdentifier = (modifyDto.getContainerItemName() != null)
+                ? "named '" + modifyDto.getContainerItemName() + "'"
+                : "with ID " + modifyDto.getContainerItemId();
+        logger.info("Attempting to modify item {} in active container for user '{}'", itemIdentifier, actor.getDisplayName());
+
+        ContainerSummaryDto updatedContainer = containerService.modifyItemInActiveContainer(modifyDto, actor);
+
+        // Using a generic success message is appropriate here as the details are in the response body.
+        String message = responseBuilder.buildSuccessContainerItemModificationMessage(modifyDto.getContainerItemName(), updatedContainer.getContainerName());
+        StandardApiResponse<ContainerSummaryDto> response = new StandardApiResponse<>(true, message, updatedContainer);
+        return ResponseEntity.ok(response);
+    }
+
+
     @DeleteMapping("/{id}")
     @PreAuthorize("@securityService.canModifyContainer(#id, principal)")
     public ResponseEntity<StandardApiResponse<DeletedEntityDto>> deleteContainerById(

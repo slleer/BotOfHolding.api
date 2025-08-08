@@ -2,6 +2,7 @@ package com.botofholding.api.Service.Implementations;
 
 import com.botofholding.api.Domain.DTO.Request.AddItemRequestDto;
 import com.botofholding.api.Domain.DTO.Request.ContainerRequestDto;
+import com.botofholding.api.Domain.DTO.Request.ModifyItemRequestDto;
 import com.botofholding.api.Domain.DTO.Response.AutoCompleteDto;
 import com.botofholding.api.Domain.DTO.Response.ContainerSummaryDto;
 import com.botofholding.api.Domain.DTO.Response.DeletedEntityDto;
@@ -24,8 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,6 +51,12 @@ public class ContainerServiceImpl implements ContainerService {
         this.containerItemMapper = containerItemMapper;
     }
 
+    /**
+     * Creates a new container for a given owner.
+     * @param principal The owner for whom to create the container. Either the requesting user or the guild the command was sent from.
+     * @param containerRequestDto The details of the container to create.
+     * @return A DTO of the newly created container.
+     */
     @Override
     @Transactional
     public ContainerSummaryDto addContainer(Owner principal, ContainerRequestDto containerRequestDto) {
@@ -85,6 +90,12 @@ public class ContainerServiceImpl implements ContainerService {
         return containerMapper.toSummaryDto(savedContainer, userContext);
     }
 
+    /**
+     * Finds a container by its ID.
+     * @param id The ID of the container to find.
+     * @param actor The user requesting the container.
+     * @return A DTO of the found container.
+     */
     @Override
     @Transactional
     public ContainerSummaryDto findContainerById(@NotNull @Min(1) Long id, Owner actor) {
@@ -94,6 +105,13 @@ public class ContainerServiceImpl implements ContainerService {
                 .orElseThrow(() -> new ContainerNotFoundException("Container with id " + id + " not found."));
     }
 
+    /**
+     * Finds a list of containers by name or owners.
+     * @param name The name of the container to find.
+     * @param actor The user requesting the container and one of the owners to filter by.
+     * @param principal One of the owners to filter by if it's a GUILD otherwise the requesting user.
+     * @return A list of DTOs of the found containers.
+     */
     @Override
     @Transactional
     public List<ContainerSummaryDto> findContainersForPrincipalAndActor(String name, Owner actor, Owner principal) {
@@ -111,6 +129,13 @@ public class ContainerServiceImpl implements ContainerService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * provides autocomplete result set of containers for the given prefix and owners.
+     * @param prefix The search string to filter by.
+     * @param actor The user requesting the autocomplete and one of the owners to filter by.
+     * @param principal One of the owners to filter by if it's a GUILD otherwise the requesting user.
+     * @return A list of DTOs of the found containers.
+     */
     @Override
     @Transactional
     public List<AutoCompleteDto> autocompleteContainersForPrincipalAndActor(String prefix, Owner actor, Owner principal) {
@@ -127,6 +152,13 @@ public class ContainerServiceImpl implements ContainerService {
                 .collect(Collectors.toList());
     }
 
+
+    /**
+     * Activates a container for a given owner.
+     * @param id The ID of the container to activate.
+     * @param actor The user for whom to activate the container.
+     * @return A DTO of the newly activated container.
+     */
     // TODO combine activate by id and activate by name into a single activate method.
     @Override
     @Transactional
@@ -140,6 +172,14 @@ public class ContainerServiceImpl implements ContainerService {
         return activate(user, container);
     }
 
+    /**
+     * Activates a container for a given owner.
+     * @param name The name of the container to activate.
+     * @param ownerPriority used to prioritize a container owner if multiple containers returned for actor and principal
+     * @param actor The user for whom to activate the container and one of the owners to filter by.
+     * @param principal One of the owners to filter by if it's a GUILD otherwise the requesting user.
+     * @return A DTO of the newly activated container.
+     */
     @Override
     @Transactional
     public ContainerSummaryDto activateContainerByName(String name, String ownerPriority, Owner actor, Owner principal) {
@@ -165,6 +205,11 @@ public class ContainerServiceImpl implements ContainerService {
         return activate(user, containerToActivate);
     }
 
+    /**
+     * Finds the active container for a given owner.
+     * @param actor The owner for whom to find the active container.
+     * @return A DTO of the found container.
+     */
     @Override
     @Transactional
     public ContainerSummaryDto findActiveContainerForUser(Owner actor) {
@@ -178,6 +223,13 @@ public class ContainerServiceImpl implements ContainerService {
         return containerMapper.toSummaryDto(activeContainer, user);
     }
 
+    /**
+     * Adds an item to the actor's active container.
+     * @param addDto The details of the item to add.
+     * @param actor The requesting user for whom the container is active for, one of the item owners to filter by.
+     * @param principal One of the item's owners to filter by if it's a GUILD otherwise the requesting user.
+     * @return A DTO of the updated container.
+     */
     @Override
     @Transactional
     public ContainerSummaryDto addItemToActiveContainer(AddItemRequestDto addDto, Owner actor, Owner principal) {
@@ -219,13 +271,23 @@ public class ContainerServiceImpl implements ContainerService {
         logger.info("The item is {} with name '{}'.", itemToAdd.getItemId(), itemToAdd.getItemName());
 
         // 3. Check if the item already exists in the container to update its quantity.
-        // Find and validate the parent item using a robust helper method.
-        Optional<ContainerItem> parentItemOpt = findAndValidateParentContainerItem(addDto, activeContainer);
+        // Find the parent item if specified. This helper "soft-fails" by returning an empty Optional
+        // if no parent is specified.
+        Optional<ContainerItem> parentOpt;
+        try {
+            // This will "hard-fail" if an invalid or ambiguous parent is specified...
+            parentOpt = findOptionalParentItem(addDto.getInsideId(), addDto.getInsideName(), activeContainer);
+            // ...and this will "hard-fail" if the found parent is not a valid parent type.
+            parentOpt.ifPresent(p -> validateParentage(null, p));
+        } catch (ValidationException | ItemNotFoundException | AmbiguousResourceException e) {
+            // [SOFT FAIL] Catch the failure, log it, and treat the parent as non-existent.
+            logger.warn("Invalid parent specified when adding item. Defaulting to container root. Reason: {}", e.getMessage());
+            parentOpt = Optional.empty();
+        }
+        ContainerItem parent = parentOpt.orElse(null);
 
         // Correctly handle stackable vs. non-stackable (parent) items.
         if (!itemToAdd.isParent()) {
-            // Item is stackable. Find if it exists in the correct location (i.e., with the same parent) to update it.
-            ContainerItem parent = parentItemOpt.orElse(null); // null represents the container root
 
             ContainerItem containerItem = activeContainer.getContainerItems().stream()
                     .filter(ci -> ci.getItem().getItemId().equals(itemToAdd.getItemId()) && Objects.equals(ci.getParent(), parent))
@@ -263,7 +325,9 @@ public class ContainerServiceImpl implements ContainerService {
                     newContainerItem.setUserNote(addDto.getUserNote());
                 }
                 activeContainer.getContainerItems().add(newContainerItem);
-                parentItemOpt.ifPresent(parent -> parent.addChild(newContainerItem));
+                if (parent != null) {
+                    parent.addChild(newContainerItem);
+                }
             }
         }
         // We must explicitly save and flush the container here.
@@ -272,10 +336,18 @@ public class ContainerServiceImpl implements ContainerService {
         // resulting in a null value in the response DTO.
         Container savedContainer = containerRepository.saveAndFlush(activeContainer);
 
-        // The savedContainer object is now up-to-date and can be mapped correctly.
         return containerMapper.toSummaryDto(savedContainer, user);
     }
 
+    /**
+     * Drops an item from the active container.
+     * @param id The ID of the item to drop, nullable
+     * @param name The name of the item to drop, a fallback if the id is null
+     * @param quantity The quantity of the item to drop
+     * @param dropChildren Indicates if any children should be dropped as well
+     * @param actor The requesting user for whom the container is active for.
+     * @return A DTO of the updated container.
+     */
     @Override
     @Transactional
     public ContainerSummaryDto dropItemFromActiveContainer(Long id, String name, Integer quantity, Boolean dropChildren, Owner actor) {
@@ -283,64 +355,30 @@ public class ContainerServiceImpl implements ContainerService {
             throw new UnsupportedOperationException("Only users can have an active container to add items to.");
         }
 
+        logger.debug("Id: {}, name: {}, quantity: {}, dropChildren: {}", id, name, quantity, dropChildren);
         Container activeContainer = containerRepository.findActiveContainerWithItemsForUser(user)
                 .orElseThrow(() -> new ContainerNotFoundException("No active container found for user " + user.getDisplayName()));
 
         // Find the specific ContainerItem to drop. Using the unique containerItemId is the most reliable way.
-        ContainerItem foundContainerItem;
-        if (id != null) {
-            // The provided ID is the unique ContainerItem ID from the autocomplete selection.
-            foundContainerItem = activeContainer.getContainerItems().stream()
-                    .filter(ci -> id.equals(ci.getContainerItemId()))
-                    .findFirst()
-                    .orElseThrow(() -> new ItemNotFoundException("Item with container item ID " + id + " not found in container."));
-        } else if (name != null) {
-            // Fallback to using the full display name, which can be ambiguous for non-stackable items.
-            List<ContainerItem> potentialItems = activeContainer.getContainerItems().stream()
-                    .filter(ci -> name.equalsIgnoreCase(containerItemMapper.mapItemName(ci)))
-                    .toList();
+        ContainerItem foundContainerItem = findContainerItem(id, name, activeContainer);
 
-            if (potentialItems.isEmpty()) {
-                throw new ItemNotFoundException("Item named '" + name + "' not found in container '" + activeContainer.getContainerName() + "'.");
-            }
-            if (potentialItems.size() > 1) {
-                throw new AmbiguousResourceException("Multiple items named '" + name + "' exist. Please use the item's unique ID to drop it.");
-            }
-            foundContainerItem = potentialItems.get(0);
-        } else {
-            throw new ValidationException("An item ID or name must be provided to drop an item.");
-        }
 
-        
         if (foundContainerItem.getQuantity() < quantity) {
-            // by the client and should map to a 400 Bad Request, which is appropriate here.
             throw new ValidationException("The container only has " + foundContainerItem.getQuantity() + " of item '" + foundContainerItem.getItem().getItemName() + "', can't remove " + quantity +  ".");
         }
         
         if (foundContainerItem.getQuantity().equals(quantity)) {
             // If the quantity matches exactly, remove the item from the container.
-
-            // [FIX] We must decouple children BEFORE removing the parent from the container's collection.
-            // If we remove the parent first, orphanRemoval marks it for deletion, and when we then
-            // modify the children, Hibernate gets confused about the state of the relationship,
-            // leading to the "detached entity" error during flush.
             if(foundContainerItem.getItem().isParent()) {
-                // Make a copy of the children list to avoid ConcurrentModificationException
-                // as we will be modifying the original list via removeChild.
+
                 List<ContainerItem> childrenItems = new ArrayList<>(foundContainerItem.getChildren());
                 if (Boolean.TRUE.equals(dropChildren)) {
-                    // If we are dropping the children, remove them from the container's main list.
-                    // orphanRemoval will handle their deletion from the database.
                     activeContainer.getContainerItems().removeAll(childrenItems);
                 } else {
-                    // If we are keeping the children, we must properly sever the bidirectional relationship.
-                    // This clears the parent's `children` list and sets the `parent` on each child to null.
                     childrenItems.forEach(foundContainerItem::removeChild);
                 }
             }
 
-            // Now that children are handled, remove the parent item itself.
-            // orphanRemoval=true on the Container entity will ensure the ContainerItem is deleted from the DB.
             activeContainer.getContainerItems().remove(foundContainerItem);
             logger.info("Removed all of item '{}' from container '{}'", foundContainerItem.getItem().getItemName(), activeContainer.getContainerName());
         } else {
@@ -352,10 +390,15 @@ public class ContainerServiceImpl implements ContainerService {
         // and that any deletions (from orphanRemoval) are executed.
         Container savedContainer = containerRepository.saveAndFlush(activeContainer);
 
-        // The savedContainer object is now up-to-date and can be mapped correctly.
         return containerMapper.toSummaryDto(savedContainer, user);
     }
 
+    /**
+     * generates autocomplete result set for given prefix of ContainerItems inside user's active container
+     * @param prefix The search string to filter by
+     * @param actor The requesting user for whom the container is active for.
+     * @return A list of DTOs of the found containerItems.
+     */
     @Override
     @Transactional
     public List<AutoCompleteDto> autocompleteContainerItemsInActiveContainer(String prefix, Owner actor) {
@@ -390,6 +433,12 @@ public class ContainerServiceImpl implements ContainerService {
         return results;
     }
 
+    /**
+     * generates autocomplete result set for given prefix of 'Parent' ContainerItems inside user's active container
+     * @param prefix The search string to filter by
+     * @param actor The requesting user for whom the container is active for.
+     * @return A list of DTOs of the found containerItems.
+     */
     @Override
     @Transactional
     public List<AutoCompleteDto> autocompleteParentContainerItemsInActiveContainer(String prefix, Owner actor) {
@@ -423,6 +472,14 @@ public class ContainerServiceImpl implements ContainerService {
         return results;
     }
 
+    // TODO - update so guild owned container items can be deleted
+    /**
+     * Delete a container by name and id
+     * @param id the id of the container to delete
+     * @param name the name of the container to delete
+     * @param actor the owner of the container to delete
+     * @return A DTO of the deleted container.
+     */
     @Override
     @Transactional
     public DeletedEntityDto deleteContainerByIdAndName(Long id, String name, Owner actor) {
@@ -463,6 +520,90 @@ public class ContainerServiceImpl implements ContainerService {
     }
 
     /**
+     * modify an existing ContainerItem's details in an active container
+     * @param modifyDto The details of the item to modify
+     * @param actor The requesting user for whom the container is active for.
+     * @return A DTO of the updated container.
+     */
+    @Override
+    @Transactional
+    public ContainerSummaryDto modifyItemInActiveContainer(ModifyItemRequestDto modifyDto, Owner actor) {
+        if (!(actor instanceof BohUser user)) {
+            throw new UnsupportedOperationException("Only users can modify items in an active container.");
+        }
+
+        // 1. Validate DTO to prevent ambiguous requests
+        if ((modifyDto.getNewParentId() != null || modifyDto.getNewParentName() != null) && Boolean.TRUE.equals(modifyDto.getMoveToRoot())) {
+            throw new ValidationException("Cannot specify both a new parent and move to root. Please choose one.");
+        }
+
+        // 2. Get active container
+        Container activeContainer = containerRepository.findActiveContainerWithItemsForUser(user)
+                .orElseThrow(() -> new ContainerNotFoundException("No active container found for user " + user.getDisplayName()));
+
+        // 3. Find the item to modify using the resilient finder.
+        // This uses the ID if present, otherwise falls back to the name.
+        ContainerItem itemToModify = findContainerItem(modifyDto.getContainerItemId(), modifyDto.getContainerItemName(), activeContainer);
+
+        boolean modified = false;
+
+        // 4. Update the note if the 'note' field is present in the request body
+        if (modifyDto.getNote() != null) {
+            // Allow clearing the note by passing an empty or blank string
+            itemToModify.setUserNote(modifyDto.getNote().isBlank() ? null : modifyDto.getNote());
+            logger.info("Updated note for item '{}' (ID: {})", containerItemMapper.mapItemName(itemToModify), itemToModify.getContainerItemId());
+            modified = true;
+        }
+
+        // 5. Handle moving the item to a new parent
+        if (modifyDto.getNewParentId() != null || modifyDto.getNewParentName() != null) {
+            ContainerItem newParent = findContainerItem(modifyDto.getNewParentId(), modifyDto.getNewParentName(), activeContainer);
+
+            // [HARD FAIL] Perform validation. If it fails, an exception is thrown, and the operation stops.
+            validateParentage(itemToModify, newParent);
+
+            // If there's an old parent, correctly sever the bidirectional link
+            if (itemToModify.getParent() != null) {
+                itemToModify.getParent().removeChild(itemToModify);
+            }
+            newParent.addChild(itemToModify);
+            logger.info("Moved item '{}' into parent '{}'", containerItemMapper.mapItemName(itemToModify), containerItemMapper.mapItemName(newParent));
+            modified = true;
+
+        } else if (Boolean.TRUE.equals(modifyDto.getMoveToRoot())) {
+            if (itemToModify.getParent() != null) {
+                // Move to root by severing the link with the current parent
+                itemToModify.getParent().removeChild(itemToModify);
+                logger.info("Moved item '{}' to the container root.", containerItemMapper.mapItemName(itemToModify));
+                modified = true;
+            } else {
+                logger.info("Item '{}' is already at the root. No move performed.", containerItemMapper.mapItemName(itemToModify));
+            }
+        }
+
+        // 6. Update the quantity if the 'quantity' field is present in the request body
+        if (modifyDto.getNewQuantity() != null) {
+            // newQuantity must be > 0
+            if (modifyDto.getNewQuantity() <= 0) {
+                throw new ValidationException("New quantity must be greater than 0.");
+            }
+            logger.info("Updated quantity of item '{}' to {}.", containerItemMapper.mapItemName(itemToModify), modifyDto.getNewQuantity());
+            itemToModify.setQuantity(modifyDto.getNewQuantity());
+            modified = true;
+        }
+
+        if (!modified) {
+            logger.warn("Modify item request received for item ID {}, but no changes were specified in the request body.", itemToModify.getContainerItemId());
+            // No need to save if no changes were made, just return the current state
+            return containerMapper.toSummaryDto(activeContainer, user);
+        }
+
+        // 6. Save the container to persist all changes and return the updated state
+        Container savedContainer = containerRepository.saveAndFlush(activeContainer);
+        return containerMapper.toSummaryDto(savedContainer, user);
+    }
+
+    /**
      * Activates a container for a given owner, setting it as the primary container.
      *
      * @param user The user for whom to activate the container.
@@ -485,59 +626,78 @@ public class ContainerServiceImpl implements ContainerService {
     }
 
     /**
-     * Finds and validates a potential parent ContainerItem based on the AddItemRequestDto.
-     * This helper method encapsulates the logic for finding by ID or name, handling ambiguity,
-     * and ensuring the found item is capable of being a parent.
+     * Finds a specific ContainerItem within a given container. This is a "hard-failing" method.
+     * It will throw an exception if the item is not found or if the name is ambiguous.
      *
-     * @param addDto The request DTO containing the parent's ID or name.
-     * @param activeContainer The container to search within.
-     * @return An Optional containing the validated parent ContainerItem, or an empty Optional if no parent was specified.
-     * @throws ItemNotFoundException if the specified parent is not found.
-     * @throws AmbiguousResourceException if the specified parent name matches multiple items.
-     * @throws ValidationException if the found item is not a valid parent (i.e., its `isParent` flag is false).
+     * @param id The unique ID of the ContainerItem.
+     * @param name The name of the ContainerItem (used as a fallback if id is null).
+     * @param container The container to search within.
+     * @return The found ContainerItem.
+     * @throws ItemNotFoundException if the specified ContainerItem is not found.
+     * @throws AmbiguousResourceException if the specified ContainerItem name matches multiple items.
+     * @throws ValidationException if neither an ID nor a name is provided.
      */
-    private Optional<ContainerItem> findAndValidateParentContainerItem(AddItemRequestDto addDto, Container activeContainer) {
-        if (addDto.getInsideId() == null && (addDto.getInsideName() == null || addDto.getInsideName().isBlank())) {
-            return Optional.empty();
+    private ContainerItem findContainerItem(Long id, String name, Container container) {
+        if (id == null && (name == null || name.isBlank())) {
+            throw new ValidationException("An item ID or name must be provided to identify the item.");
         }
 
-        // [IMPROVEMENT] Implement "soft-fail" for parent assignment per the TODO.
-        // If the parent is invalid, log a warning and add the item to the root instead of throwing an error.
-        try {
-            Optional<ContainerItem> parentOpt;
-            if (addDto.getInsideId() != null) {
-                // The provided ID is the unique ContainerItem ID from the autocomplete selection.
-                parentOpt = activeContainer.getContainerItems().stream()
-                        .filter(ci -> addDto.getInsideId().equals(ci.getContainerItemId()))
-                        .findFirst();
-                if (parentOpt.isEmpty()) {
-                    throw new ItemNotFoundException("The specified parent item (container item ID: " + addDto.getInsideId() + ") was not found in the container.");
-                }
-            } else { // Find by name
-                // Fallback to using the full display name, which can be ambiguous for non-stackable items.
-                List<ContainerItem> potentialParents = activeContainer.getContainerItems().stream()
-                        .filter(ci -> addDto.getInsideName().equalsIgnoreCase(containerItemMapper.mapItemName(ci)))
-                        .toList();
+        if (id != null) {
+            return container.getContainerItems().stream()
+                    .filter(ci -> id.equals(ci.getContainerItemId()))
+                    .findFirst()
+                    .orElseThrow(() -> new ItemNotFoundException("Item with ID " + id + " not found in container '" + container.getContainerName() + "'."));
+        } else { // TODO fix find by name to check both item's name and item's fully qualified location name (mapItemName)
+                //   because if no id, then autocomplete failed and might have just typed base name
+            List<ContainerItem> potentialItems = container.getContainerItems().stream()
+                    .filter(ci -> name.equalsIgnoreCase(containerItemMapper.mapItemName(ci)))
+                    .toList();
 
-                if (potentialParents.isEmpty()) {
-                    throw new ItemNotFoundException("The specified parent item ('" + addDto.getInsideName() + "') was not found in the container.");
-                }
-                if (potentialParents.size() > 1) {
-                    throw new AmbiguousResourceException("Multiple potential parent items found with the name '" + addDto.getInsideName() + "'. Please use the parent's unique ID instead.");
-                }
-                parentOpt = Optional.of(potentialParents.get(0));
+            if (potentialItems.isEmpty()) {
+                throw new ItemNotFoundException("Item named '" + name + "' not found in container '" + container.getContainerName() + "'.");
             }
-
-            ContainerItem parentItem = parentOpt.get();
-
-            if (!parentItem.getItem().isParent()) {
-                throw new ValidationException("The item '" + parentItem.getItem().getItemName() + "' cannot contain other items.");
+            if (potentialItems.size() > 1) {
+                throw new AmbiguousResourceException("Multiple items found with the name '" + name + "'. Please be more specific or use the item's unique ID.");
             }
+            return potentialItems.get(0);
+        }
+    }
 
-            return parentOpt;
-        } catch (ItemNotFoundException | AmbiguousResourceException | ValidationException e) {
-            logger.warn("Could not set parent for item. Reason: {}. The item will be added to the container root.", e.getMessage());
-            return Optional.empty();
+    /**
+     * Finds a potential parent ContainerItem. This is a "soft-failing" method for optional parents.
+     * It returns an empty Optional if no parent is specified.
+     * It "hard-fails" by throwing an exception if an *invalid* or *ambiguous* parent is specified.
+     */
+    private Optional<ContainerItem> findOptionalParentItem(Long id, String name, Container container) {
+        if (id == null && (name == null || name.isBlank())) {
+            return Optional.empty(); // No parent was specified, which is valid.
+        }
+        // A parent was specified, so use the hard-failing finder to locate it.
+        return Optional.of(findContainerItem(id, name, container));
+    }
+
+    /**
+     * Runs a series of validation checks before changing an item's parent, throwing an exception on failure.
+     * @param itemToMove The item that is being moved. Can be null when validating a new item.
+     * @param newParent The potential new parent for the item.
+     * @throws ValidationException if any parenting rule is violated.
+     */
+    private void validateParentage(ContainerItem itemToMove, ContainerItem newParent) {
+        // Rule 1: A new parent must be a parent-type item.
+        if (!newParent.getItem().isParent()) {
+            throw new ValidationException("Item '" + containerItemMapper.mapItemName(newParent) + "' cannot contain other items.");
+        }
+        // Rule 2: An item cannot be its own parent.
+        if (itemToMove != null && newParent.getContainerItemId().equals(itemToMove.getContainerItemId())) {
+            throw new ValidationException("An item cannot be its own parent.");
+        }
+        // Rule 3: An item cannot be moved into one of its own descendants (circular dependency).
+        ContainerItem current = newParent;
+        while (current != null) {
+            if (itemToMove != null && current.getContainerItemId().equals(itemToMove.getContainerItemId())) {
+                throw new ValidationException("Cannot move item into one of its own descendants, as this would create a circular reference.");
+            }
+            current = current.getParent();
         }
     }
 }

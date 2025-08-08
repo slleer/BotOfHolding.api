@@ -41,6 +41,11 @@ public class StandardResponseBuilder implements ResponseBuilder {
     }
 
     @Override
+    public String buildSuccessContainerItemModificationMessage(String itemName, String containerName) {
+        return String.format("Item (%s) modified in container (%s) successfully.\n", itemName, containerName);
+    }
+
+    @Override
     public String buildCustomSuccessMessage(String message) {
         return message;
     }

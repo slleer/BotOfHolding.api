@@ -31,4 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
-/src/main/resources/application.properties
+
+### Bot Of Holding ###
+/src/main/resources/application-dev.properties
+/src/main/resources/application-prod.properties
+*.log.gz

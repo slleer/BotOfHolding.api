@@ -2,6 +2,7 @@ package com.botofholding.api.Service.Interfaces;
 
 import com.botofholding.api.Domain.DTO.Request.AddItemRequestDto;
 import com.botofholding.api.Domain.DTO.Request.ContainerRequestDto;
+import com.botofholding.api.Domain.DTO.Request.ModifyItemRequestDto;
 import com.botofholding.api.Domain.DTO.Response.AutoCompleteDto;
 import com.botofholding.api.Domain.DTO.Response.ContainerSummaryDto;
 import com.botofholding.api.Domain.DTO.Response.DeletedEntityDto;
@@ -36,4 +37,6 @@ public interface ContainerService {
     List<AutoCompleteDto> autocompleteParentContainerItemsInActiveContainer(String prefix, Owner actor);
 
     DeletedEntityDto deleteContainerByIdAndName(@NotNull @Min(1) Long id, @NotNull String name, Owner actor);
+
+    ContainerSummaryDto modifyItemInActiveContainer(ModifyItemRequestDto modifyItemRequestDto, Owner actor);
 }
