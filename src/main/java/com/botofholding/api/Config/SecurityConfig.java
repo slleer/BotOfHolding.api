@@ -31,6 +31,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Allow unauthenticated access to a token generation endpoint for the bot.
                         .requestMatchers("/api/auth/bot-token").permitAll()
+                        // Allow unauthenticated access to actuator endpoints.
+                        .requestMatchers("/actuator/**").permitAll() // Permit all access to actuator endpoints
                         // Secure all other API endpoints.
                         .requestMatchers("/api/**").authenticated()
                         // Deny any other requests.

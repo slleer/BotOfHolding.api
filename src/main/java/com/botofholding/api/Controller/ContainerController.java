@@ -193,7 +193,7 @@ public class ContainerController extends BaseController {
         logger.info("Attempting to modify item {} in active container for user '{}'", itemIdentifier, actor.getDisplayName());
 
         ServiceResponse<ContainerSummaryDto> serviceResponse  = containerService.modifyItemInActiveContainer(modifyDto, actor);
-
+        logger.info("Returning message: {}", serviceResponse.message());
         StandardApiResponse<ContainerSummaryDto> response = new StandardApiResponse<>(true, serviceResponse.message(), serviceResponse.data());
         return ResponseEntity.ok(response);
     }

@@ -41,7 +41,8 @@ public class Item extends AuditableEntity {
     @Column(name = "VALUE_UNIT")
     private String valueUnit;
 
-    @Column(name = "IS_PAET")
+    // [FIX] Corrected column name typo from IS_PAET to IS_PARENT for clarity.
+    @Column(name = "IS_PARENT")
     private boolean parent;
 
     @Override

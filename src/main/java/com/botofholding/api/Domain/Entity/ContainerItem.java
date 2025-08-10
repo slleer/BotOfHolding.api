@@ -41,7 +41,7 @@ public class ContainerItem extends AuditableEntity {
     private String userNote;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "PAET_ID")
+    @JoinColumn(name = "PARENT_ID")
     private ContainerItem parent;
 
     @OneToMany(

@@ -59,7 +59,7 @@ public interface ContainerRepository extends JpaRepository<Container, Long> {
      * @param user The user whose active container is to be found.
      * @return An Optional containing the active Container, or empty if none is set.
      */
-    @Query("SELECT pc FROM BohUser u JOIN u.primaryContainer pc LEFT JOIN FETCH pc.containerItems ci LEFT JOIN FETCH ci.item i WHERE u = :user")
+    @Query("SELECT DISTINCT pc FROM BohUser u JOIN u.primaryContainer pc LEFT JOIN FETCH pc.containerItems ci LEFT JOIN FETCH ci.item i WHERE u = :user")
     Optional<Container> findActiveContainerWithItemsForUser(@Param("user") BohUser user);
 
     /**

@@ -3,6 +3,7 @@ package com.botofholding.api.Domain.DTO.Response;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -15,4 +16,6 @@ public class ContainerItemSummaryDto {
     private Integer quantity;
     private String userNote;
     private LocalDateTime lastModified;
+    private List<ContainerItemSummaryDto> children;
+    private ContainerItemSummaryDto parent;
 }

@@ -11,10 +11,14 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface ContainerItemMapper {
 
+    @Mapping(source = "containerItemId", target = "containerItemId")
     @Mapping(source = "item.itemId", target = "itemId")
-    @Mapping(source = "containerItem", target = "itemName", qualifiedByName = "mapItemName")
+    @Mapping(source = "item.itemName", target = "itemName")
+    @Mapping(source = "quantity", target = "quantity")
+    @Mapping(source = "userNote", target = "userNote")
     @Mapping(source = "lastModifiedDateTime", target = "lastModified")
-    ContainerItemSummaryDto toDto(ContainerItem containerItem);
+    @Mapping(source = "children", target = "children")
+    ContainerItemSummaryDto toSummaryDto(ContainerItem containerItem);
 
     @Mapping(source = "containerItem", target = "label", qualifiedByName = "mapItemName")
     @Mapping(source = "containerItemId", target = "id")
@@ -31,8 +35,8 @@ public interface ContainerItemMapper {
     }
 
     /**
-     * Creates a description for an autocomplete entry, combining quantity and user note.
-     * e.g., "(5) A special potion" or "(10)" if no note exists.
+     * Creates a description for an autocomplete entry, combining containerItemId, quantity and user note.
+     * e.g., "[343] (x5) A special potion" or "(10)" if no note exists.
      * @param containerItem The item to describe.
      * @return A formatted description string.
      */
@@ -42,6 +46,7 @@ public interface ContainerItemMapper {
             return "";
         }
         StringBuilder description = new StringBuilder();
+        description.append("[").append(containerItem.getContainerItemId()).append("] ");
         if (containerItem.getQuantity() != null) {
             description.append("x").append(containerItem.getQuantity());
         }

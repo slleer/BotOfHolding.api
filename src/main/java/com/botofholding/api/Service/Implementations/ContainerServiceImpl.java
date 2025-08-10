@@ -4,6 +4,7 @@ import com.botofholding.api.Domain.DTO.Request.AddItemRequestDto;
 import com.botofholding.api.Domain.DTO.Request.ContainerRequestDto;
 import com.botofholding.api.Domain.DTO.Request.ModifyItemRequestDto;
 import com.botofholding.api.Domain.DTO.Response.AutoCompleteDto;
+import com.botofholding.api.Domain.DTO.Response.AutoCompleteProjection;
 import com.botofholding.api.Domain.DTO.Response.ServiceResponse;
 import com.botofholding.api.Domain.DTO.Response.ContainerSummaryDto;
 import com.botofholding.api.Domain.DTO.Response.DeletedEntityDto;
@@ -220,8 +221,16 @@ public class ContainerServiceImpl implements ContainerService {
             throw new UnsupportedOperationException("Only users can activate containers.");
         }
 
+        // Step 1: Fetch the container and all its associated items in a single query.
+        // This avoids the MultipleBagFetchException and Cartesian product issues.
         Container activeContainer = containerRepository.findActiveContainerWithItemsForUser(user)
                 .orElseThrow(() -> new ContainerNotFoundException("No active container found for user " + user.getDisplayName()));
+
+        // Step 2: If there are items, fetch all their direct children and the children's associated item data
+        // in a second, efficient query.
+        if (!activeContainer.getContainerItems().isEmpty()) {
+            containerItemRepository.fetchChildrenForContainerItems(activeContainer.getContainerItems());
+        }
 
         return containerMapper.toSummaryDto(activeContainer, user);
     }
@@ -244,6 +253,9 @@ public class ContainerServiceImpl implements ContainerService {
         Container activeContainer = containerRepository.findActiveContainerWithItemsForUser(user)
                 .orElseThrow(() -> new ContainerNotFoundException("No active container found for user " + user.getDisplayName()));
 
+        if (!activeContainer.getContainerItems().isEmpty()) {
+            containerItemRepository.fetchChildrenForContainerItems(activeContainer.getContainerItems());
+        }
         // 2. Find the item to be added. Prefer the ID if provided, as it's unambiguous.
         Optional<Item> itemById = Optional.ofNullable(addDto.getItemId())
                 .flatMap(itemRepository::findById);
@@ -365,6 +377,9 @@ public class ContainerServiceImpl implements ContainerService {
         Container activeContainer = containerRepository.findActiveContainerWithItemsForUser(user)
                 .orElseThrow(() -> new ContainerNotFoundException("No active container found for user " + user.getDisplayName()));
 
+        if (!activeContainer.getContainerItems().isEmpty()) {
+            containerItemRepository.fetchChildrenForContainerItems(activeContainer.getContainerItems());
+        }
         // Find the specific ContainerItem to drop. Using the unique containerItemId is the most reliable way.
         ContainerItem foundContainerItem = findContainerItem(id, name, activeContainer);
 
@@ -470,6 +485,9 @@ public class ContainerServiceImpl implements ContainerService {
         Container activeContainer = containerRepository.findActiveContainerWithItemsForUser(user)
                 .orElseThrow(() -> new ContainerNotFoundException("No active container found for user " + user.getDisplayName()));
 
+        if (!activeContainer.getContainerItems().isEmpty()) {
+            containerItemRepository.fetchChildrenForContainerItems(activeContainer.getContainerItems());
+        }
         // 3. Find the item to modify using the resilient finder.
         // This uses the ID if present, otherwise falls back to the name.
         ContainerItem itemToModify = findContainerItem(modifyDto.getContainerItemId(), modifyDto.getContainerItemName(), activeContainer);
@@ -488,7 +506,8 @@ public class ContainerServiceImpl implements ContainerService {
         }
 
         // 5. Handle moving the item to a new parent
-        if (modifyDto.getNewParentId() != null || modifyDto.getNewParentName() != null) {
+        // [FIX] Also check that the parent name is not blank to avoid attempting a move with an empty identifier.
+        if (modifyDto.getNewParentId() != null || (modifyDto.getNewParentName() != null && !modifyDto.getNewParentName().isBlank())) {
             ContainerItem newParent = findContainerItem(modifyDto.getNewParentId(), modifyDto.getNewParentName(), activeContainer);
 
             // [HARD FAIL] Perform validation. If it fails, an exception is thrown, and the operation stops.
@@ -554,16 +573,15 @@ public class ContainerServiceImpl implements ContainerService {
             throw new UnsupportedOperationException("Only users can have an active container.");
         }
         logger.info("Searching for items with prefix '{}' for actor: {}", prefix, actor.getDisplayName());
-        Pageable top25 = PageRequest.of(0, 25, Sort.by("item.itemName"));
 
-        // Delegate filtering and pagination to the database for efficiency.
-        List<ContainerItem> items = containerItemRepository.findInActiveContainerByPrefix(prefix, user, top25);
+        List<AutoCompleteProjection> projections = containerItemRepository.findItemsForAutocomplete(prefix, user.getId());
 
-        if (items.isEmpty()) {
+        if (projections.isEmpty()) {
             logger.info("No items found for autocomplete with prefix '{}'.", prefix);
         }
-        return items.stream()
-                .map(containerItemMapper::toAutoCompleteDto)
+
+        return projections.stream()
+                .map(p -> new AutoCompleteDto(p.getId(), p.getLabel(), p.getDescription()))
                 .collect(Collectors.toList());
     }
 
@@ -580,16 +598,15 @@ public class ContainerServiceImpl implements ContainerService {
             throw new UnsupportedOperationException("Only users can have an active container.");
         }
         logger.info("Searching for parent items with prefix '{}' for actor: {}", prefix, actor.getDisplayName());
-        Pageable top25 = PageRequest.of(0, 25, Sort.by("item.itemName"));
 
-        // Delegate filtering and pagination to the database for efficiency.
-        List<ContainerItem> items = containerItemRepository.findParentsInActiveContainerByPrefix(prefix, user, top25);
+        List<AutoCompleteProjection> projections = containerItemRepository.findParentItemsForAutocomplete(prefix, user.getId());
 
-        if (items.isEmpty()) {
+        if (projections.isEmpty()) {
             logger.info("No parent items found for autocomplete with prefix '{}'.", prefix);
         }
-        return items.stream()
-                .map(containerItemMapper::toAutoCompleteDto)
+
+        return projections.stream()
+                .map(p -> new AutoCompleteDto(p.getId(), p.getLabel(), p.getDescription()))
                 .collect(Collectors.toList());
     }
 
